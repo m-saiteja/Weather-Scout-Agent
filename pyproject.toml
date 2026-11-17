@@ -1,7 +1,7 @@
 [project]
 name = "weather-agent"
 version = "0.1.0"
-description = "Add your description here"
+description = "Project dependencies"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
@@ -12,4 +12,17 @@ dependencies = [
     "requests>=2.34.2",
     "streamlit>=1.67.0",
     "tavily-python>=0.8.5",
+]
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.5.0",
+    "pytest-mock>=3.17.0",
+    "responses>=0.26.3",
+]
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::DeprecationWarning:langsmith.*",
 ]
