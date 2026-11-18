@@ -17,6 +17,7 @@ The agent demonstrates autonomous decision-making: it knows when to check live w
 - **Fail-Fast Configuration:** Validates required environment variables on startup with helpful error messages.
 - **Enterprise Observability:** Full cloud execution tracing with LangSmith and structured local logging.
 - **Multi-Tier Testing & CI/CD:** Automated unit tests, agent routing tests, and benchmark behavioral evals with GitHub Actions.
+- **Cloud-Native Deployment:** Production-grade **Docker** containerization and **Kubernetes** orchestration with health probes and sticky WebSocket sessions.
 
 ---
 
@@ -30,6 +31,7 @@ The agent demonstrates autonomous decision-making: it knows when to check live w
 - **Observability:** LangSmith (Cloud Tracing), Python standard `logging`
 - **Testing & Evals:** `pytest`, `pytest-mock`, `responses`, `pytest-asyncio`
 - **CI/CD:** GitHub Actions (PR Checks & Nightly Model Evals)
+- **Containerization & Orchestration:** Docker, Kubernetes (`kubectl`, KinD / Docker Desktop)
 
 ---
 
@@ -41,6 +43,11 @@ Weather-Scout-Agent/
 │   └── workflows/
 │       ├── pr-check.yml            # Fast PR verification (Unit + Integration tests)
 │       └── nightly-evals.yml       # Scheduled/manual benchmark behavioral evals
+├── k8s/
+│   ├── secret.example.yaml         # Secret manifest template for API keys
+│   ├── configmap.yaml              # Non-sensitive runtime configs (LangSmith)
+│   ├── deployment.yaml             # Pod specifications, replicas, health probes
+│   └── service.yaml                # LoadBalancer service with WebSocket session affinity
 ├── src/
 │   ├── __init__.py
 │   ├── config.py                   # Environment loading & fail-fast validation
@@ -61,6 +68,8 @@ Weather-Scout-Agent/
 │   └── evals/
 │       ├── golden_dataset.json     # Curated benchmark queries & assertions
 │       └── test_agent_behavior.py  # Tier 3: Output quality, safety & hallucination evals
+├── .dockerignore                   # Excludes .venv, .env, and caches from container images
+├── Dockerfile                      # Multi-stage, uv-powered slim production container
 ├── .streamlit/
 │   └── config.toml                 # Streamlit UI styling & theme configuration
 ├── main.py                         # Unified application entry point & router
@@ -79,6 +88,7 @@ Weather-Scout-Agent/
   ```bash
   curl -LsSf https://astral.sh/uv/install.sh | sh
   ```
+- Docker Desktop *(for containerization and local Kubernetes)*
 - API keys:
   - [Groq](https://console.groq.com/keys) (LLM inference)
   - [WeatherAPI](https://www.weatherapi.com/) (Live weather)
@@ -114,7 +124,7 @@ LANGCHAIN_PROJECT="weather-scout-agent"
 
 ---
 
-## Running the Application
+## Running Locally
 
 ### Web UI (Streamlit)
 
@@ -138,6 +148,69 @@ Run in interactive terminal mode:
 uv run main.py --cli
 ```
 *Tip: Type `exit`, `quit`, or `bye` to exit the session.*
+
+---
+
+## Containerization & Kubernetes Deployment
+
+The project is fully containerized and includes production-ready Kubernetes manifests.
+
+### 1. Run with Docker Standalone
+
+Build the image using `uv` inside a slim Debian runtime:
+
+```bash
+# Build the container image
+docker build -t weather-scout:v2 .
+
+# Run the container using your local .env file
+docker run -p 8501:8501 --env-file .env weather-scout:v2
+```
+Access the application at `http://localhost:8501`.
+
+### 2. Deploy to Kubernetes
+
+The Kubernetes architecture in `k8s/` follows cloud-native best practices:
+- **High Availability:** 2 Pod replicas running in parallel.
+- **Security:** Non-root user execution (`appuser`), secrets never committed to Git.
+- **Resilience:** Liveness and readiness probes hitting Streamlit's native `/_stcore/health` endpoint.
+- **Resource Management:** CPU and memory request/limit bounds.
+- **WebSocket Session Affinity:** `sessionAffinity: ClientIP` in `service.yaml` keeps Streamlit's persistent WebSocket connections pinned to the correct pod.
+
+#### Step-by-Step Kubernetes Deployment:
+
+```bash
+# 1. Create the Secret directly from your .env file (zero secrets stored in git!)
+kubectl create secret generic weather-scout-secret --from-env-file=.env
+
+# 2. Apply non-sensitive runtime configurations
+kubectl apply -f k8s/configmap.yaml
+
+# 3. Deploy the application pods (2 replicas)
+kubectl apply -f k8s/deployment.yaml
+
+# 4. Expose the deployment via the LoadBalancer service
+kubectl apply -f k8s/service.yaml
+
+# 5. Check rollout status
+kubectl get pods -l app=weather-scout -w
+kubectl get service weather-scout-service
+```
+
+#### Stream Live Cluster Logs:
+
+```bash
+kubectl logs -l app=weather-scout -f
+```
+
+#### Tear Down Cluster Resources:
+
+```bash
+kubectl delete -f k8s/deployment.yaml
+kubectl delete -f k8s/service.yaml
+kubectl delete -f k8s/configmap.yaml
+kubectl delete secret weather-scout-secret
+```
 
 ---
 
