@@ -16,14 +16,14 @@ Weather Scout is an AI agent built with LangChain, LangGraph, and Groq that deli
 ## Tech Stack
 
 - **Runtime & Package Management:** Python 3.14+, [`uv`](https://docs.astral.sh/uv/)
-- **Agent Orchestration:** LangChain, LangGraph (`create_agent`)
+- **Agent Orchestration:** LangChain
 - **LLM Engine:** Groq (`openai/gpt-oss-20b`, temperature=0)
 - **External Tools:** WeatherAPI, Tavily Search
 - **User Interfaces:** Streamlit, Python CLI
 - **Observability:** LangSmith (Cloud Tracing), Python standard `logging`
-- **Testing & Evals:** `pytest`, `pytest-mock`, `responses`, `pytest-asyncio`
+- **Testing & Evals:** `pytest`
 - **CI/CD:** GitHub Actions (PR Checks & Nightly Model Evals)
-- **Containerization & Orchestration:** Docker, Kubernetes (`kubectl`, KinD / Docker Desktop)
+- **Containerization & Orchestration:** Docker, Kubernetes
 
 ---
 
