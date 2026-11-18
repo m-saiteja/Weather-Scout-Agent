@@ -19,7 +19,7 @@ def build_agent(tools=None, llm=None):
             max_retries=5
         )
     if tools is None:
-        tools = [get_weather, get_search_tool]
+        tools = [get_weather, get_search_tool()]
 
     return create_agent(
         model=llm,
