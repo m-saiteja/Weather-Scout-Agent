@@ -1,0 +1,22 @@
+name: PR Checks
+on: [pull_request, push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    environment: weather-agent
+    steps:
+        - uses: actions/checkout@v4
+        - name: Install uv and dependencies
+          run: |
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            uv sync
+        - name: Run Unit Tests
+          run: |
+            uv run pytest -m unit
+
+        - name: Run Integration Tests 
+          env:
+            GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          run: |
+            uv run pytest -m integration

@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "langchain>=1.5.0",
+    "langchain-core>=1.8.1",
     "langchain-groq>=1.2.0",
     "langchain-tavily>=0.2.18",
     "python-dotenv>=1.2.4",
@@ -25,4 +26,9 @@ pythonpath = ["."]
 asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
     "ignore::DeprecationWarning:langsmith.*",
+]
+markers = [
+    "unit: Fast, offline unit tests for tools and contracts (no LLM, no network)",
+    "integration: Routing and decision tests (lightweight agent calls)",
+    "eval: Output quality, safety, and hallucination evaluations (benchmark suite)",
 ]

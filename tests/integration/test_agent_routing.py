@@ -3,6 +3,9 @@ from langchain.tools import tool
 from src.agent import build_agent
 
 
+pytestmark = pytest.mark.integration
+
+
 @tool('weather')
 def mock_weather(location: str) -> str:
     """

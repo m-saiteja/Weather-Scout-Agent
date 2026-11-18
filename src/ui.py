@@ -1,7 +1,15 @@
+import sys
+import time
 import streamlit as st
+from pathlib import Path
 from groq import RateLimitError
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from src.config import setup_logger
 from src.agent import build_agent
+
+logger = setup_logger(__name__)
 
 @st.cache_resource
 def get_agent():
@@ -66,11 +74,15 @@ def run_agent_ui():
         if user_query.strip():
             try:
                 with st.spinner("Checking the sky..."):
+                    logger.info(f"User query received: '{user_query}'")
+                    start_time = time.time()
                     agent_response = agent.invoke({
                         "messages": [{
                             "role": "user", 
                             "content": user_query.strip()}]
                     })
+                    duration = time.time() - start_time
+                    logger.info(f"Agent finished response in {duration:.2f}s")
                 st.markdown("#### Your answer")
                 with st.chat_message(
                     "assistant", avatar=":material/partly_cloudy_day:"

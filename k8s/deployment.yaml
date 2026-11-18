@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weather-scout-deployment
+  labels:
+    app: weather-scout
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: weather-scout
+  template:
+    metadata:
+      labels:
+        app: weather-scout
+    spec:
+      containers:
+        - name: weather-scout-container
+          image: weather-scout:v2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8501
+              name: http
+          envFrom:
+            - configMapRef:
+                name: weather-scout-config
+            - secretRef:
+                name: weather-scout-secret
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 5
+            periodSeconds: 5

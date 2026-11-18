@@ -1,80 +1,246 @@
 # Weather Scout Agent
 
-Weather Scout is a small AI agent that answers questions using current weather
-data and web search. Ask about a city's conditions, look up information online,
-or combine both in one question.
+Weather Scout is an intelligent AI agent built with LangChain, LangGraph, and Groq that delivers real-time weather forecasts and web search summaries through an interactive Streamlit UI or command-line interface.
 
-The Streamlit interface uses a sky-inspired light/dark theme and presents the
-agent's weather and web-search capabilities alongside a question form. A
-command-line interface is also available.
+The agent demonstrates autonomous decision-making: it knows when to check live weather, when to search the web for current events, and when to respond directly using conversational memory.
 
-## Tech stack
+---
 
-- **Python 3.14+** — application runtime
-- **Streamlit** — web UI and light/dark theme
-- **LangChain** — agent orchestration and tool integration
-- **Groq** (`openai/gpt-oss-20b`) — language model for composing answers
-- **Tavily** — web search
-- **WeatherAPI** — current weather data
-- **python-dotenv** — local environment-variable loading
-- **Requests** and **Certifi** — weather API requests and trusted certificates
-- **uv** — dependency management and project execution
+## Key Features
 
-## Requirements
+- **Live Weather Sensing:** Instant global forecasts, conditions, and temperatures via WeatherAPI.
+- **Real-Time Web Search:** Web research and current event summarization via Tavily Search.
+- **Autonomous Tool Routing:** Dynamically selects the appropriate tool or chains multiple tools based on user intent.
+- **Dual Presentation Layer:** 
+  - A modern, sky-inspired **Streamlit Web UI** (light/dark theme).
+  - An interactive **CLI** with live timing and real-time execution tracing.
+- **Fail-Fast Configuration:** Validates required environment variables on startup with helpful error messages.
+- **Enterprise Observability:** Full cloud execution tracing with LangSmith and structured local logging.
+- **Multi-Tier Testing & CI/CD:** Automated unit tests, agent routing tests, and benchmark behavioral evals with GitHub Actions.
+
+---
+
+## Tech Stack
+
+- **Runtime & Package Management:** Python 3.14+, [`uv`](https://docs.astral.sh/uv/)
+- **Agent Orchestration:** LangChain, LangGraph (`create_agent`)
+- **LLM Engine:** Groq (`openai/gpt-oss-20b`, temperature=0)
+- **External Tools:** WeatherAPI, Tavily Search
+- **User Interfaces:** Streamlit, Python CLI
+- **Observability:** LangSmith (Cloud Tracing), Python standard `logging`
+- **Testing & Evals:** `pytest`, `pytest-mock`, `responses`, `pytest-asyncio`
+- **CI/CD:** GitHub Actions (PR Checks & Nightly Model Evals)
+
+---
+
+## Project Structure
+
+```text
+Weather-Scout-Agent/
+├── .github/
+│   └── workflows/
+│       ├── pr-check.yml            # Fast PR verification (Unit + Integration tests)
+│       └── nightly-evals.yml       # Scheduled/manual benchmark behavioral evals
+├── src/
+│   ├── __init__.py
+│   ├── config.py                   # Environment loading & fail-fast validation
+│   ├── prompts.py                  # System prompt templates & behavioral instructions
+│   ├── agent.py                    # Agent factory with dependency injection
+│   ├── cli.py                      # Interactive CLI with timing & console tracing
+│   ├── ui.py                       # Streamlit web application
+│   └── tools/
+│       ├── __init__.py             # Public tool exports
+│       ├── weather.py              # Resilient WeatherAPI tool with error handling
+│       └── search.py               # Tavily search tool factory
+├── tests/
+│   ├── conftest.py                 # Pytest shared configuration
+│   ├── unit/
+│   │   └── test_weather_tool.py    # Tier 1: Deterministic offline HTTP mocking
+│   ├── integration/
+│   │   └── test_agent_routing.py   # Tier 2: Tool selection & parameter extraction
+│   └── evals/
+│       ├── golden_dataset.json     # Curated benchmark queries & assertions
+│       └── test_agent_behavior.py  # Tier 3: Output quality, safety & hallucination evals
+├── .streamlit/
+│   └── config.toml                 # Streamlit UI styling & theme configuration
+├── main.py                         # Unified application entry point & router
+├── pyproject.toml                  # Project metadata, dependencies & pytest config
+└── README.md
+```
+
+---
+
+## Getting Started
+
+### 1. Prerequisites
 
 - Python 3.14 or newer
-- API keys for [Groq](https://console.groq.com/keys),
-  [Tavily](https://app.tavily.com/home), and
-  [WeatherAPI](https://www.weatherapi.com/)
-- [uv](https://docs.astral.sh/uv/) for dependency management (recommended)
+- [`uv`](https://docs.astral.sh/uv/) installed on your machine:
+  ```bash
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  ```
+- API keys:
+  - [Groq](https://console.groq.com/keys) (LLM inference)
+  - [WeatherAPI](https://www.weatherapi.com/) (Live weather)
+  - [Tavily](https://app.tavily.com/) (Web search)
+  - [LangSmith](https://smith.langchain.com/) *(optional, for cloud observability)*
 
-## Setup
+### 2. Installation
 
-1. Clone the repository and change into its directory.
-2. Install the project dependencies:
+Clone the repository and sync dependencies:
 
-   ```bash
-   uv sync
-   ```
+```bash
+git clone https://github.com/<your-username>/Weather-Scout-Agent.git
+cd Weather-Scout-Agent
+uv sync --extra dev
+```
 
-3. Create a `.env` file in the project root and add your API keys:
+### 3. Environment Configuration
 
-   ```dotenv
-   GROQ_API_KEY=your_groq_api_key
-   TAVILY_API_KEY=your_tavily_api_key
-   WEATHER_API_KEY=your_weatherapi_key
-   ```
+Create a `.env` file in the project root:
 
-Keep the `.env` file private; do not commit API keys to version control.
+```bash
+# Core API Keys
+GROQ_API_KEY=your_groq_api_key
+WEATHER_API_KEY=your_weatherapi_key
+TAVILY_API_KEY=your_tavily_api_key
 
-## Run the app
+# Observability (LangSmith Tracing)
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_ENDPOINT="https://apac.api.smith.langchain.com" # Or https://api.smith.langchain.com for US
+LANGCHAIN_API_KEY="your_langsmith_api_key"
+LANGCHAIN_PROJECT="weather-scout-agent"
+```
 
-Start the Streamlit interface:
+---
+
+## Running the Application
+
+### Web UI (Streamlit)
+
+Launch the Streamlit web application:
 
 ```bash
 uv run main.py
 ```
+*(Alternatively: `uv run streamlit run src/ui.py`)*
 
-The app opens in your browser. Enter a question such as:
+Try queries like:
+- *"What's the weather in Tokyo?"*
+- *"What is the capital of Peru and how is the weather there?"*
+- *"Find the latest developments about the James Webb telescope."*
 
-- “What’s the weather in Tokyo?”
-- “What’s the capital of India and its current weather?”
-- “Find a few things to do in Vancouver and tell me the forecast.”
+### Command-Line Interface (CLI)
 
-Weather questions use WeatherAPI's current-conditions endpoint. Web searches
-use Tavily, and Groq's `openai/gpt-oss-20b` model composes a concise answer.
-
-To use the command-line interface instead:
+Run in interactive terminal mode:
 
 ```bash
 uv run main.py --cli
 ```
+*Tip: Type `exit`, `quit`, or `bye` to exit the session.*
 
-Type `exit`, `quit`, or `bye` to leave the CLI.
+---
 
-## Configuration
+## Testing & Quality Strategy
 
-The Streamlit theme is configured in `.streamlit/config.toml`. It includes
-weather-inspired teal accents and coordinated light and dark color palettes.
+The project implements a **Multi-Tier Agent Testing Pyramid** using `pytest`:
 
-Dependencies and the supported Python version are declared in `pyproject.toml`.
+```text
+               ┌────────────────────────┐
+               │  3. Behavioral Evals   │  tests/evals/ (Golden Dataset)
+               ├────────────────────────┤
+               │  2. Agent Routing      │  tests/integration/ (Decisions)
+               ├────────────────────────┤
+               │  1. Tool Unit Tests    │  tests/unit/ (Mocked HTTP & Resiliency)
+               └────────────────────────┘
+```
+
+### 1. Tier 1: Deterministic Tool Unit Tests (`@pytest.mark.unit`)
+- **File:** `tests/unit/test_weather_tool.py`
+- **What it tests:** Weather tool behavior in isolation using `responses` HTTP mocking.
+- **Scenarios covered:**
+  - Happy Path (HTTP 200 OK)
+  - Unknown City / Client Error (HTTP 400)
+  - Upstream Service Outage (HTTP 500)
+  - Network Timeout & Connection Drops (`requests.exceptions.Timeout`)
+- **Execution:** 100% offline, 0 API credits, runs in < 1 second.
+
+```bash
+uv run pytest -m unit -v
+```
+
+### 2. Tier 2: Agent Routing & Decision Tests (`@pytest.mark.integration`)
+- **File:** `tests/integration/test_agent_routing.py`
+- **What it tests:** The LLM's tool-selection intelligence using fast mock tools.
+- **Scenarios covered:**
+  - Weather queries trigger `weather` tool with correct location arguments.
+  - Web research queries trigger `tavily_search` instead of weather.
+  - Conversational chitchat (e.g. *"Hello"*) triggers zero tool calls (tool frugality).
+
+```bash
+uv run pytest -m integration -v
+```
+
+### 3. Tier 3: Output Quality & Behavioral Evals (`@pytest.mark.eval`)
+- **Files:** `tests/evals/test_agent_behavior.py` & `tests/evals/golden_dataset.json`
+- **What it tests:** Model responses against a curated benchmark dataset.
+- **Scenarios covered:**
+  - **Brevity & Conciseness:** Enforces response word limits across different categories.
+  - **Information Leakage:** Ensures internal JSON, `<tool_call>`, or code blocks never leak to the user.
+  - **Prompt Injection Defense:** Refuses adversarial attempts to expose system instructions or API keys.
+  - **Hallucination Prevention:** Confirms the agent admits when locations are invalid rather than inventing sunny temperatures.
+
+```bash
+uv run pytest -m eval -v
+```
+
+### Running All Tests
+
+```bash
+# Run all unit and integration tests (Standard PR check):
+uv run pytest -m "unit or integration" -v
+
+# Run the complete suite:
+uv run pytest -v
+```
+
+---
+
+## CI / CD Pipelines (GitHub Actions)
+
+The repository uses automated GitHub Actions workflows to balance developer speed, token consumption, and regression prevention:
+
+1. **Pull Request Checks (`.github/workflows/pr-check.yml`)**
+   - Triggers on every `push` and `pull_request`.
+   - Runs **Unit Tests** (offline) and **Integration Tests** (routing verification).
+   - Finishes in under 15 seconds, preventing broken routing or tool regressions from entering `main`.
+2. **Nightly Model Evals (`.github/workflows/nightly-evals.yml`)**
+   - Triggers on a nightly cron schedule (`0 0 * * *`) and manual dispatch.
+   - Executes the full **Behavioral Evals benchmark suite** against Groq.
+   - Monitors model quality, safety compliance, and tone drift over time.
+
+---
+
+## Observability & Debugging
+
+### 1. Cloud Tracing with LangSmith
+Every execution automatically streams execution trees to LangSmith when configured.
+- **Waterfall View:** Visualizes the complete trajectory: `User Message` $\rightarrow$ `ChatGroq` $\rightarrow$ `weather` tool call $\rightarrow$ `ChatGroq` synthesis.
+- **Autonomous Self-Correction:** Observe how the agent detects external API anomalies (e.g., location ambiguities) and self-corrects query parameters in real time.
+- **Cost & Latency Tracking:** Monitor exact token consumption, model inference latency, and tool response times.
+
+### 2. Local Structured Logging
+The project uses namespaced Python logging (`logging.getLogger(__name__)`):
+```text
+15:30:12 | INFO    | src.tools.weather | Fetching weather data for location='Rome'
+15:30:14 | INFO    | src.cli           | Agent finished response in 1.82s
+```
+
+### 3. Real-Time Terminal Tracing
+The CLI interface integrates LangChain's `ConsoleCallbackHandler`, streaming live colored execution traces directly to stdout during development.
+
+---
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

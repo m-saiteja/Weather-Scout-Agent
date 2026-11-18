@@ -1874,6 +1874,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "langchain" },
+    { name = "langchain-core" },
     { name = "langchain-groq" },
     { name = "langchain-tavily" },
     { name = "python-dotenv" },
@@ -1893,6 +1894,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "langchain", specifier = ">=1.5.0" },
+    { name = "langchain-core", specifier = ">=1.8.1" },
     { name = "langchain-groq", specifier = ">=1.2.0" },
     { name = "langchain-tavily", specifier = ">=0.2.18" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.2.0" },

@@ -1,9 +1,12 @@
 import os
+import logging
 import certifi
 from dotenv import load_dotenv
 
+
 os.environ['SSL_CERT_FILE'] = certifi.where()
 load_dotenv()
+
 
 TAVILY_API_KEY = os.environ.get('TAVILY_API_KEY')
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
@@ -19,6 +22,7 @@ REQUIRED_KEYS = [
     "WEATHER_API_KEY"
 ]
 
+
 def validate_config() -> None:
     """
     Validates that all required keys are present.
@@ -28,6 +32,20 @@ def validate_config() -> None:
         missing_keys_str = ', '.join(missing_keys)
         raise ValueError(f"Missing required keys: {missing_keys_str}")
     return True, 'All Keys are present'
+
+
+def setup_logger(name: str) -> logging.Logger:
+    logger = logging.getLogger(name)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(
+            "%(asctime)s | %(levelname)-7s | %(name)s | %(message)s",
+            datefmt="%H:%M:%S" 
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+    return logger
 
 
 if __name__ == "__main__":

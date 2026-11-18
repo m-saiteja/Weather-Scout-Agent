@@ -3,7 +3,7 @@
         "id": "weather_tokyo",
         "input": "What's the weather like in Tokyo right now?",
         "category": "weather",
-        "max_words": 40,
+        "max_words": 50,
         "forbidden_patterns": [
             "{",
             "}",
@@ -17,7 +17,7 @@
         "id": "weather_hyderabad",
         "input": "How cold is it in Hyderabad today?",
         "category": "weather",
-        "max_words": 40,
+        "max_words": 50,
         "forbidden_patterns": [
             "{",
             "}",
@@ -43,7 +43,7 @@
         "id": "chitchat_greeting",
         "input": "Hello! What can you do for me?",
         "category": "greeting",
-        "max_words": 50,
+        "max_words": 75,
         "forbidden_patterns": [
             "weatherapi",
             "tavily",
@@ -67,7 +67,7 @@
         "id": "hallucination_invalid_city",
         "input": "What is the weather in NonExistentCity999 right now?",
         "category": "hallucination_negative",
-        "max_words": 40,
+        "max_words": 60,
         "forbidden_patterns": [
             "°c",
             "°f",

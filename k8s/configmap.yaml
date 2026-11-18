@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: weather-scout-config
+data:
+  LANGCHAIN_TRACING_V2: "true"
+  LANGCHAIN_ENDPOINT: "https://apac.api.smith.langchain.com"
+  LANGCHAIN_PROJECT: "weather-scout-agent"

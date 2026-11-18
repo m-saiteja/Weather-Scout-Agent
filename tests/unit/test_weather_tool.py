@@ -6,6 +6,9 @@ from src.config import WEATHER_API_URL
 from src.tools.weather import get_weather
 
 
+pytestmark = pytest.mark.unit
+
+
 @responses.activate
 def test_get_weather_success():
     mock_payload = {
