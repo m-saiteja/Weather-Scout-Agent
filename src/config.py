@@ -31,7 +31,7 @@ def validate_config() -> None:
     if missing_keys:
         missing_keys_str = ', '.join(missing_keys)
         raise ValueError(f"Missing required keys: {missing_keys_str}")
-    return True, 'All Keys are present'
+    return True, missing_keys_str
 
 
 def setup_logger(name: str) -> logging.Logger:
@@ -49,5 +49,5 @@ def setup_logger(name: str) -> logging.Logger:
 
 
 if __name__ == "__main__":
-    is_valid, message = validate_config()
-    print(message)
+    is_valid, missing_keys_str = validate_config()
+    print(f"Missing Keys: {missing_keys_str}")

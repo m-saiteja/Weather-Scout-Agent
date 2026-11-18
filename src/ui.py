@@ -5,9 +5,8 @@ from pathlib import Path
 from groq import RateLimitError
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from src.config import setup_logger
 from src.agent import build_agent
+from src.config import setup_logger, validate_config
 
 logger = setup_logger(__name__)
 
@@ -25,6 +24,12 @@ def run_agent_ui():
     '''
     Run the Streamlit UI for the agent.
     '''
+    try:
+        validate_config()
+    except ValueError as e:
+        st.error(f'Configuration Error: {e}')
+        st.stop()
+
     st.set_page_config(
         page_title="Weather scout",
         page_icon=":material/partly_cloudy_day:",

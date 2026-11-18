@@ -1,19 +1,11 @@
 # Weather Scout Agent
 
-Weather Scout is an intelligent AI agent built with LangChain, LangGraph, and Groq that delivers real-time weather forecasts and web search summaries through an interactive Streamlit UI or command-line interface.
-
-The agent demonstrates autonomous decision-making: it knows when to check live weather, when to search the web for current events, and when to respond directly using conversational memory.
+Weather Scout is an AI agent built with LangChain, LangGraph, and Groq that delivers real-time weather forecasts and web search summaries through an interactive Streamlit UI or command-line interface.
 
 ---
 
 ## Key Features
 
-- **Live Weather Sensing:** Instant global forecasts, conditions, and temperatures via WeatherAPI.
-- **Real-Time Web Search:** Web research and current event summarization via Tavily Search.
-- **Autonomous Tool Routing:** Dynamically selects the appropriate tool or chains multiple tools based on user intent.
-- **Dual Presentation Layer:** 
-  - A modern, sky-inspired **Streamlit Web UI** (light/dark theme).
-  - An interactive **CLI** with live timing and real-time execution tracing.
 - **Fail-Fast Configuration:** Validates required environment variables on startup with helpful error messages.
 - **Enterprise Observability:** Full cloud execution tracing with LangSmith and structured local logging.
 - **Multi-Tier Testing & CI/CD:** Automated unit tests, agent routing tests, and benchmark behavioral evals with GitHub Actions.
@@ -84,7 +76,7 @@ Weather-Scout-Agent/
 ### 1. Prerequisites
 
 - Python 3.14 or newer
-- [`uv`](https://docs.astral.sh/uv/) installed on your machine:
+- [`uv`](https://docs.astral.sh/uv/):
   ```bash
   curl -LsSf https://astral.sh/uv/install.sh | sh
   ```
@@ -133,7 +125,6 @@ Launch the Streamlit web application:
 ```bash
 uv run main.py
 ```
-*(Alternatively: `uv run streamlit run src/ui.py`)*
 
 Try queries like:
 - *"What's the weather in Tokyo?"*
