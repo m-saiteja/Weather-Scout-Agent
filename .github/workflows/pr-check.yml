@@ -6,11 +6,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: weather-agent
     steps:
-        - uses: actions/checkout@v4
-        - name: Install uv and dependencies
+        - uses: astral-sh/setup-uv@v5
+          with:
+            enabled-cache: true
+        - name: Install dependencies
           run: |
-            curl -LsSf https://astral.sh/uv/install.sh | sh
-            uv sync
+            uv sync --extra dev
         - name: Run Unit Tests
           run: |
             uv run pytest -m unit
