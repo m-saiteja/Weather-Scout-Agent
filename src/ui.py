@@ -3,6 +3,7 @@ import time
 import streamlit as st
 from pathlib import Path
 from groq import RateLimitError
+from langchain_core.messages import AIMessageChunk
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.agent import build_agent
@@ -17,6 +18,36 @@ def get_agent():
     caching avoids rebuilding the agent each time.
     '''
     return build_agent()
+
+
+def generate_response(agent, query: str, status=None):
+    '''
+    Streams tokens from agent in real time.
+    Filters out empty tool call chunks and yields only visible text.
+    '''
+    for chunk, metadata in agent.stream(
+        {
+            "messages": [{
+                "role": "user",
+                "content": query
+
+            }]
+        },
+        stream_mode="messages"
+    ):
+        # if the agent calls a tool, show it in the status box
+        if hasattr(chunk, "tool_call_chunks") and chunk.tool_call_chunks and status:
+            tool_name = chunk.tool_call_chunks[0].get("name")
+            if tool_name:
+                display_name = "Weather API" if "weather" in tool_name else "Web Search"
+                status.write(f"Scouting data using **{display_name}**...")
+        
+        # when the final message arrives, clear the status and stream words
+        if isinstance(chunk, AIMessageChunk) and chunk.content:
+            if status:
+                status.update(label="Compiling your final answer...", state="complete", expanded=False)
+                status = None
+            yield chunk.content
 
 
 # Streamlit App Configuration
@@ -77,26 +108,20 @@ def run_agent_ui():
     agent = build_agent()
     if submitted and user_query.strip():
         if user_query.strip():
-            try:
-                with st.spinner("Checking the sky..."):
-                    logger.info(f"User query received: '{user_query}'")
+            # try:
+            st.markdown("#### Your Answer")
+            with st.chat_message("assistant", avatar=":material/partly_cloudy_day:"):
+                try:
+                    logger.info(f"User query reveived: '{user_query}'")
                     start_time = time.time()
-                    agent_response = agent.invoke({
-                        "messages": [{
-                            "role": "user", 
-                            "content": user_query.strip()}]
-                    })
+                    status = st.status("Fetching the data to answer your query", expanded=True)
+                    full_response = st.write_stream(generate_response(agent, user_query.strip(), status))
                     duration = time.time() - start_time
                     logger.info(f"Agent finished response in {duration:.2f}s")
-                st.markdown("#### Your answer")
-                with st.chat_message(
-                    "assistant", avatar=":material/partly_cloudy_day:"
-                ):
-                    st.write(agent_response["messages"][-1].content)
-            except RateLimitError:
-                st.warning("Rate limit reached. Please wait a few seconds and try again.")
-        else:
-            st.warning("Add a question first, then ask your weather scout.")
+                except RateLimitError:
+                    st.warning("Rate limit reached. Please wait a few seconds and try again.")
+    else:
+        st.warning("Add a question first, then ask your weather scout.")
 
 
 if __name__ == '__main__':
