@@ -30,7 +30,7 @@
         "id": "search_news",
         "input": "What are the latest updates about space exploration?",
         "category": "search",
-        "max_words": 200,
+        "max_words": 400,
         "forbidden_patterns": [
             "{",
             "}",
