@@ -8,6 +8,8 @@ from langchain_core.messages import AIMessageChunk
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.agent import build_agent
 from src.config import setup_logger, validate_config
+from src.rate_limiter import SlidingWindowRateLimiter
+from src.guardrails import validate_input, sanitize_output
 
 logger = setup_logger(__name__)
 
@@ -20,11 +22,21 @@ def get_agent():
     return build_agent()
 
 
-def generate_response(agent, query: str, status=None):
+@st.cache_resource
+def get_rate_limiter():
+    return SlidingWindowRateLimiter(
+        max_requests=5,
+        window_seconds=60,
+        min_cooldown=2.0,
+    )
+
+
+def generate_response(agent, query: str, thread_id: str, status=None):
     '''
     Streams tokens from agent in real time.
     Filters out empty tool call chunks and yields only visible text.
     '''
+    config = {"configurable": {"thread_id": thread_id}}
     for chunk, metadata in agent.stream(
         {
             "messages": [{
@@ -33,6 +45,7 @@ def generate_response(agent, query: str, status=None):
 
             }]
         },
+        config=config,
         stream_mode="messages"
     ):
         # if the agent calls a tool, show it in the status box
@@ -61,6 +74,13 @@ def run_agent_ui():
         st.error(f'Configuration Error: {e}')
         st.stop()
 
+    if "thread_id" not in st.session_state:
+        import uuid
+        st.session_state.thread_id = str(uuid.uuid4())
+
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+        
     st.set_page_config(
         page_title="Weather scout",
         page_icon=":material/partly_cloudy_day:",
@@ -89,7 +109,7 @@ def run_agent_ui():
 
     st.subheader("What would you like to know?", icon=":material/search:")
     with st.container(border=True):
-        with st.form("weather_agent_search", border=False):
+        with st.form("weather_agent_search", border=False, clear_on_submit=True):
             query_col, submit_col = st.columns(
                 [5, 1], vertical_alignment="bottom"
             )
@@ -105,23 +125,56 @@ def run_agent_ui():
                     type="primary",
                     width="stretch",
                 )
+        
+    if st.session_state.messages:
+        st.markdown("#### Conversation")
+        for msg in st.session_state.messages:
+            avatar = ":material/partly_cloudy_day:" if msg["role"] == "assistant" else None
+            with st.chat_message(msg["role"], avatar=avatar):
+                st.write(msg["content"])
+
     agent = build_agent()
     if submitted and user_query.strip():
         if user_query.strip():
-            # try:
-            st.markdown("#### Your Answer")
+            # rate limiting
+            rate_limiter = get_rate_limiter()
+            allowed, wait = rate_limiter.check_limit(st.session_state.thread_id)
+            if not allowed:
+                st.warning(f"Please wait {wait} seconds before making another request.")
+                return
+            
+            # input guardrails
+            is_safe, error_msg = validate_input(user_query.strip())
+            if not is_safe:
+                st.error(error_msg)
+                return
+
+            with st.chat_message("user"):
+                st.write(user_query.strip())
+            st.session_state.messages.append({"role": "user", "content": user_query.strip()})
+
+            # st.markdown("#### Your Answer")
             with st.chat_message("assistant", avatar=":material/partly_cloudy_day:"):
                 try:
                     logger.info(f"User query reveived: '{user_query}'")
                     start_time = time.time()
                     status = st.status("Fetching the data to answer your query", expanded=True)
-                    full_response = st.write_stream(generate_response(agent, user_query.strip(), status))
+                    raw_response = st.write_stream(
+                                            generate_response(
+                                                        agent, 
+                                                        user_query.strip(),
+                                                        thread_id=st.session_state.thread_id,
+                                                        status=status)
+                                        )
                     duration = time.time() - start_time
                     logger.info(f"Agent finished response in {duration:.2f}s")
+                    # output guardrails
+                    safe_response = sanitize_output(raw_response)
+                    st.session_state.messages.append({"role": "assistant", "content": safe_response})
                 except RateLimitError:
                     st.warning("Rate limit reached. Please wait a few seconds and try again.")
-    else:
-        st.warning("Add a question first, then ask your weather scout.")
+        else:
+            st.warning("Add a question first, then ask your weather scout.")
 
 
 if __name__ == '__main__':

@@ -1,4 +1,5 @@
 import time
+import uuid
 # from langchain_core.tracers import ConsoleCallbackHandler
 
 from src.agent import build_agent
@@ -11,6 +12,12 @@ def run_cli():
     Run the agent in CLI mode.
     '''
     agent = build_agent()
+    thread_id = str(uuid.uuid4())
+    config = {
+                "configurable": {"thread_id": thread_id},
+                # Enbale this if you want in console traces in real-time
+                # "callbacks": [ConsoleCallbackHandler()]
+            }
     print("Weather Scout (type 'exit', 'quit' or 'bye' to leave)")
     while True:
         user_input = input("Enter your question: ")
@@ -24,10 +31,7 @@ def run_cli():
                         "role": "user", 
                         "content": user_input}],
                 },
-                # Enbale this if you want in console traces in real-time
-                # config={
-                #     "callbacks": [ConsoleCallbackHandler()]
-                # }
+                config=config
             )
         duration = time.time() - start_time
         logger.info(f"Agent finished response in {duration:.2f}s")
