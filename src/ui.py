@@ -156,7 +156,7 @@ def run_agent_ui():
             # st.markdown("#### Your Answer")
             with st.chat_message("assistant", avatar=":material/partly_cloudy_day:"):
                 try:
-                    logger.info(f"User query reveived: '{user_query}'")
+                    logger.info(f"User query received: '{user_query}'")
                     start_time = time.time()
                     status = st.status("Fetching the data to answer your query", expanded=True)
                     raw_response = st.write_stream(

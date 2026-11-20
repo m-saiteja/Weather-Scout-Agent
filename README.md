@@ -1,27 +1,37 @@
 # Weather Scout Agent
 
-Weather Scout is an AI agent built with LangChain, LangGraph, and Groq that delivers real-time weather forecasts and web search summaries through an interactive Streamlit UI or command-line interface.
+Weather Scout is an enterprise-grade AI agent built with **LangChain**, **LangGraph**, and **Groq** that delivers real-time weather forecasts and web search summaries through an interactive Streamlit UI or command-line interface.
+
+It features stateful conversational memory, real-time token streaming, multi-layer security guardrails, sliding-window rate limiting, cloud-native Kubernetes deployment, and a rigorous 3-tier testing pyramid with automated CI/CD.
 
 ---
 
 ## Key Features
 
-- **Fail-Fast Configuration:** Validates required environment variables on startup with helpful error messages.
-- **Enterprise Observability:** Full cloud execution tracing with LangSmith and structured local logging.
-- **Multi-Tier Testing & CI/CD:** Automated unit tests, agent routing tests, and benchmark behavioral evals with GitHub Actions.
-- **Cloud-Native Deployment:** Production-grade **Docker** containerization and **Kubernetes** orchestration with health probes and sticky WebSocket sessions.
+- **Fail-Fast Configuration:** Validates required environment variables and API credentials on startup with clear error messages.
+- **Stateful Conversational Memory:** Preserves multi-turn dialogue context across interactions using LangGraph's in-memory `MemorySaver` checkpointer.
+- **Real-Time Token Streaming:** Ultra-low time-to-first-token (TTFT) streaming via `AIMessageChunk` and Streamlit `st.write_stream`, paired with collapsible status indicators for live tool invocations.
+- **Multi-Layer Runtime Guardrails:**
+  - *Input Guardrails:* Enforces character limits, detects prompt injection attack signatures, and blocks toxic content.
+  - *Tool Guardrails:* Sanitizes and strips dangerous script tags or injection payloads from parameters before dispatching external API calls.
+  - *Output Guardrails:* Redacts accidental API key leaks (Groq, Tavily, LangSmith, WeatherAPI) via regex and screens outgoing messages for inappropriate content.
+- **Sliding-Window Rate Limiting:** In-memory sliding window algorithm that tracks timestamps per session thread, enforcing minimum cooldown intervals and sliding request quotas.
+- **Enterprise Observability:** Comprehensive cloud tracing with LangSmith (waterfall tool execution trees, token latency, prompt inspectability) and hierarchical Python logging.
+- **Multi-Tier Testing & CI/CD:** Complete testing pyramid (Tier 1 Unit, Tier 2 Routing Integration, Tier 3 Behavioral Evals) automated via GitHub Actions.
+- **Cloud-Native Deployment:** Production-grade **Docker** containerization (distroless/slim runtime, non-root user) and **Kubernetes** orchestration with health probes and sticky WebSocket sessions.
 
 ---
 
 ## Tech Stack
 
 - **Runtime & Package Management:** Python 3.14+, [`uv`](https://docs.astral.sh/uv/)
-- **Agent Orchestration:** LangChain
+- **Agent Orchestration & Memory:** LangChain, LangGraph (`MemorySaver`)
 - **LLM Engine:** Groq (`openai/gpt-oss-20b`, temperature=0)
 - **External Tools:** WeatherAPI, Tavily Search
-- **User Interfaces:** Streamlit, Python CLI
+- **User Interfaces:** Streamlit (with live token streaming & session threads), Python CLI
+- **Security & Reliability:** Custom regex guardrails, sliding-window rate limiter
 - **Observability:** LangSmith (Cloud Tracing), Python standard `logging`
-- **Testing & Evals:** `pytest`
+- **Testing & Evals:** `pytest`, `pytest-mock`, `responses`
 - **CI/CD:** GitHub Actions (PR Checks & Nightly Model Evals)
 - **Containerization & Orchestration:** Docker, Kubernetes
 
@@ -44,17 +54,21 @@ Weather-Scout-Agent/
 │   ├── __init__.py
 │   ├── config.py                   # Environment loading & fail-fast validation
 │   ├── prompts.py                  # System prompt templates & behavioral instructions
-│   ├── agent.py                    # Agent factory with dependency injection
-│   ├── cli.py                      # Interactive CLI with timing & console tracing
-│   ├── ui.py                       # Streamlit web application
+│   ├── agent.py                    # Agent factory with LangGraph MemorySaver checkpointer
+│   ├── guardrails.py               # Input/output security validation & secret redaction
+│   ├── rate_limiter.py             # Sliding-window rate limiting & cooldown enforcement
+│   ├── cli.py                      # Interactive CLI with guardrails, memory & timing
+│   ├── ui.py                       # Streamlit web application with token streaming & memory
 │   └── tools/
 │       ├── __init__.py             # Public tool exports
-│       ├── weather.py              # Resilient WeatherAPI tool with error handling
+│       ├── weather.py              # Resilient WeatherAPI tool with input sanitization
 │       └── search.py               # Tavily search tool factory
 ├── tests/
 │   ├── conftest.py                 # Pytest shared configuration
 │   ├── unit/
-│   │   └── test_weather_tool.py    # Tier 1: Deterministic offline HTTP mocking
+│   │   ├── test_weather_tool.py    # Tier 1: Deterministic offline HTTP mocking (responses)
+│   │   ├── test_guardrails.py      # Tier 1: Input injection, toxicity & secret redaction
+│   │   └── test_rate_limiter.py    # Tier 1: Sliding window, cooldown & session isolation
 │   ├── integration/
 │   │   └── test_agent_routing.py   # Tier 2: Tool selection & parameter extraction
 │   └── evals/
@@ -130,6 +144,7 @@ Try queries like:
 - *"What's the weather in Tokyo?"*
 - *"What is the capital of Peru and how is the weather there?"*
 - *"Find the latest developments about the James Webb telescope."*
+- Follow up with conversational memory: *"How windy is it there?"* (The agent retains context of the city from your previous turn!)
 
 ### Command-Line Interface (CLI)
 
@@ -139,6 +154,32 @@ Run in interactive terminal mode:
 uv run main.py --cli
 ```
 *Tip: Type `exit`, `quit`, or `bye` to exit the session.*
+
+---
+
+## Security, Guardrails & Reliability
+
+The application features enterprise-grade security and reliability controls:
+
+### 1. Multi-Layer Runtime Guardrails (`src/guardrails.py`)
+- **Input Guardrail (`validate_input`)**:
+  - **Length Cap:** Rejects oversized prompts (> 500 characters) to prevent token stuffing and buffer overflow attempts.
+  - **Prompt Injection Defense:** Regex scanning against known jailbreak patterns (`ignore previous instructions`, `reveal system prompt`, `developer mode`).
+  - **Toxicity Filter:** Blocks queries containing profanity or abusive language before reaching the LLM.
+- **Tool Guardrail (`sanitize_location`)**:
+  - Cleans location inputs by stripping HTML brackets, script tags, and path traversal characters before calling WeatherAPI.
+- **Output Guardrail (`sanitize_output`)**:
+  - Scans model output against `SECRET_PATTERNS` to detect and redact API keys (`gsk_*`, `tvly-*`, `lsv2_*`, hex keys) with `[REDACTED_API_KEY]`.
+
+### 2. Sliding-Window Rate Limiting (`src/rate_limiter.py`)
+- Maintains an in-memory queue of request timestamps per session thread.
+- Enforces a minimum cooldown interval (2.0s) between successive requests to prevent accidental double-clicks or rapid spam.
+- Caps request volume to 5 queries per 60-second sliding window, returning exact wait times if exceeded.
+
+### 3. Agent Conversational Memory (`src/agent.py`)
+- Uses LangGraph's `MemorySaver` checkpointer.
+- Each user session operates under an isolated `thread_id` passed via `config={"configurable": {"thread_id": ...}}`.
+- Maintains conversation history within the agent backend, allowing stateless clients (CLI, Streamlit, REST) to stay light.
 
 ---
 
@@ -215,19 +256,18 @@ The project implements a **Multi-Tier Agent Testing Pyramid** using `pytest`:
                ├────────────────────────┤
                │  2. Agent Routing      │  tests/integration/ (Decisions)
                ├────────────────────────┤
-               │  1. Tool Unit Tests    │  tests/unit/ (Mocked HTTP & Resiliency)
+               │  1. Unit Tests         │  tests/unit/ (Tools, Guardrails, Rate Limiting)
                └────────────────────────┘
 ```
 
-### 1. Tier 1: Deterministic Tool Unit Tests (`@pytest.mark.unit`)
-- **File:** `tests/unit/test_weather_tool.py`
-- **What it tests:** Weather tool behavior in isolation using `responses` HTTP mocking.
+### 1. Tier 1: Deterministic Unit Tests (`@pytest.mark.unit`)
+- **Files:** `tests/unit/test_weather_tool.py`, `tests/unit/test_guardrails.py`, `tests/unit/test_rate_limiter.py`
+- **What it tests:** Isolated business logic without calling real LLMs or external networks.
 - **Scenarios covered:**
-  - Happy Path (HTTP 200 OK)
-  - Unknown City / Client Error (HTTP 400)
-  - Upstream Service Outage (HTTP 500)
-  - Network Timeout & Connection Drops (`requests.exceptions.Timeout`)
-- **Execution:** 100% offline, 0 API credits, runs in < 1 second.
+  - **Weather Tool:** HTTP 200 Happy Path, 400 Bad Request, 500 Outage, and Timeout exceptions via `responses` mocking.
+  - **Guardrails:** Prompt injection detection, query length validation, toxic phrase rejection, location string cleaning, and secret redaction.
+  - **Rate Limiter:** Rapid burst cooldown, window sliding, max request limits, and multi-session isolation via mock timestamps.
+- **Execution:** 100% offline, 0 API credits, runs in < 0.5s.
 
 ```bash
 uv run pytest -m unit -v
@@ -235,7 +275,7 @@ uv run pytest -m unit -v
 
 ### 2. Tier 2: Agent Routing & Decision Tests (`@pytest.mark.integration`)
 - **File:** `tests/integration/test_agent_routing.py`
-- **What it tests:** The LLM's tool-selection intelligence using fast mock tools.
+- **What it tests:** The LLM's tool-selection intelligence using fast mock tools and stateful session threads.
 - **Scenarios covered:**
   - Weather queries trigger `weather` tool with correct location arguments.
   - Web research queries trigger `tavily_search` instead of weather.
@@ -247,12 +287,13 @@ uv run pytest -m integration -v
 
 ### 3. Tier 3: Output Quality & Behavioral Evals (`@pytest.mark.eval`)
 - **Files:** `tests/evals/test_agent_behavior.py` & `tests/evals/golden_dataset.json`
-- **What it tests:** Model responses against a curated benchmark dataset.
+- **What it tests:** Model responses against a curated benchmark dataset in isolated threads.
 - **Scenarios covered:**
   - **Brevity & Conciseness:** Enforces response word limits across different categories.
-  - **Information Leakage:** Ensures internal JSON, `<tool_call>`, or code blocks never leak to the user.
-  - **Prompt Injection Defense:** Refuses adversarial attempts to expose system instructions or API keys.
+  - **Information Leakage:** Ensures internal JSON, `<tool_call>`, or raw reasoning never leak into user answers.
+  - **Prompt Injection Defense:** Verifies the model itself refuses adversarial instructions to dump system prompts or credentials.
   - **Hallucination Prevention:** Confirms the agent admits when locations are invalid rather than inventing sunny temperatures.
+  - **Faithfulness Grounding:** Asserts the model accurately incorporates tool facts without inventing external details.
 
 ```bash
 uv run pytest -m eval -v
@@ -276,11 +317,12 @@ The repository uses automated GitHub Actions workflows to balance developer spee
 
 1. **Pull Request Checks (`.github/workflows/pr-check.yml`)**
    - Triggers on every `push` and `pull_request`.
+   - Sets up `uv` with cache enabled via `astral-sh/setup-uv@v5`.
    - Runs **Unit Tests** (offline) and **Integration Tests** (routing verification).
    - Finishes in under 15 seconds, preventing broken routing or tool regressions from entering `main`.
 2. **Nightly Model Evals (`.github/workflows/nightly-evals.yml`)**
-   - Triggers on a nightly cron schedule (`0 0 * * *`) and manual dispatch.
-   - Executes the full **Behavioral Evals benchmark suite** against Groq.
+   - Triggers on a nightly cron schedule (`0 0 * * *`) and manual workflow dispatch.
+   - Sets up `uv` and executes the full **Behavioral Evals benchmark suite** against Groq.
    - Monitors model quality, safety compliance, and tone drift over time.
 
 ---

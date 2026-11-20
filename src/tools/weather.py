@@ -17,7 +17,7 @@ def get_weather(location: str) -> str:
     try:
         response = requests.get(
                 WEATHER_API_URL,
-                params={"key": WEATHER_API_KEY, "q": location},
+                params={"key": WEATHER_API_KEY, "q": safe_location},
                 timeout=30
             )
         logger.info(f"WeatherAPI responded with status_code={response.status_code}")

@@ -34,7 +34,7 @@ def detect_toxic_content(text: str) -> tuple[bool, str]:
     text_lower = text.lower()
     for keyword in toxicity_keywords:
         if keyword in text_lower:
-            return True, "Your response was flagged for containing inappropriate language."
+            return True, "Your query was flagged for containing inappropriate language."
     return False, ""
 
 
