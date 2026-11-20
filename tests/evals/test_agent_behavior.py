@@ -40,14 +40,17 @@ with open(DATASET_PATH, "r", encoding="utf-8") as f:
 
 @pytest.mark.parametrize("case", GOLDEN_DATASET, ids=[case["id"] for case in GOLDEN_DATASET])
 def test_agent_output_quality(agent, case):
-    response = agent.invoke({
-        "messages": [
-            {
-                "role": "user", 
-                "content": case["input"]
-            }
-        ]
-    })
+    response = agent.invoke(
+        {
+            "messages": [
+                {
+                    "role": "user", 
+                    "content": case["input"]
+                }
+            ]
+        },
+        config={"configurable": {"thread_id": f"eval_{case['id']}"}}
+    )
 
     final_answer = response["messages"][-1].content
 

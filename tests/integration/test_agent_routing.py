@@ -45,14 +45,17 @@ def test_routes_to_weather_tool(agent):
     Test that the agent routes to the weather tool 
     ONLY for weather queries
     '''
-    response = agent.invoke({
+    response = agent.invoke(
+        {
             "messages": [
                 {
                     "role": "user",
                     "content": "What's the weather like in Hyderabad today?"
                 }
             ]
-        })
+        },
+        config={"configurable": {"thread_id": "test_routing_weather"}}
+    )
     tool_calls = extract_tools_calls(response["messages"])
 
     # Assert atlease one tool was called
@@ -68,14 +71,17 @@ def test_routes_to_weather_tool(agent):
 
 
 def test_routes_to_seach_tools(agent):
-    response = agent.invoke({
-        "messages": [
-            {
-                "role": "user",
-                "content": "What is the current stock price of Nvidia?"
-            }
-        ]
-    })
+    response = agent.invoke(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "What is the current stock price of Nvidia?"
+                }
+            ]
+        },
+        config={"configurable": {"thread_id": "test_routing_search"}}
+    )
     tool_calls = extract_tools_calls(response["messages"])
     print(f"Hey:{tool_calls}")
 
@@ -91,9 +97,12 @@ def test_routes_to_seach_tools(agent):
 
 
 def test_conversational_query_uses_no_tools(agent):
-    response = agent.invoke({
-        "messages": [{"role": "user", "content": "Hello! How are you doing today?"}]
-    })
+    response = agent.invoke(
+        {
+            "messages": [{"role": "user", "content": "Hello! How are you doing today?"}]
+        },
+        config={"configurable": {"thread_id": "test_routing_chat"}}
+    )
     
     tool_calls = extract_tools_calls(response["messages"])
     
